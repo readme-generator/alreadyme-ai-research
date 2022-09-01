@@ -7,7 +7,7 @@ from typing import Any, Optional
 import torch
 from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, LightningModule
-from torch.optim import Optimizer
+from torch.optim import AdamW, Optimizer
 from torch.utils.data import DataLoader
 from transformers import (
     AutoModelForCausalLM,
@@ -18,10 +18,10 @@ from transformers import (
 
 from data import TextFileDataset
 
-try:
-    from apex.optimizers import FusedAdam as AdamW
-except ModuleNotFoundError:
-    from torch.optim import AdamW
+# try:
+#     from apex.optimizers import FusedAdam as AdamW
+# except ModuleNotFoundError:
+#     from torch.optim import AdamW
 
 
 class MyLightningModule(LightningModule):
