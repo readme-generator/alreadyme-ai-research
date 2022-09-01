@@ -5,6 +5,7 @@ import os
 from typing import Any, Optional
 
 import torch
+from bitsandbytes.optim import AdamW8bit
 from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, LightningModule
 from torch.optim import Optimizer
@@ -18,11 +19,6 @@ from transformers import (
 
 from data import TextFileDataset
 
-try:
-    from apex.optimizers import FusedAdam as AdamW
-except ModuleNotFoundError:
-    from torch.optim import AdamW
-
 
 class MyLightningModule(LightningModule):
     def __init__(self, config: DictConfig):
@@ -33,18 +29,18 @@ class MyLightningModule(LightningModule):
             self.model.gradient_checkpointing_enable()
 
     def training_step(self, batch: dict[str, torch.Tensor], idx: int) -> torch.Tensor:
-        loss = self.model(**batch).loss
+        loss = self.model(**batch, use_cache=False).loss
         self.log("train/loss", loss)
         self.log("step", self.global_step)
         return loss
 
-    def get_parameter_groups(self) -> list[dict[str, Any]]:
+    def parameter_groups(self) -> list[dict[str, Any]]:
         do_decay = [p for p in self.model.parameters() if p.ndim >= 2]
         no_decay = [p for p in self.model.parameters() if p.ndim < 2]
         return [{"params": do_decay}, {"params": no_decay, "weight_decay": 0.0}]
 
     def configure_optimizers(self) -> tuple[list[Optimizer], list[dict[str, Any]]]:
-        optimizer = AdamW(self.get_parameter_groups(), **self.config.optim.optimizer)
+        optimizer = AdamW8bit(self.parameter_groups(), **self.config.optim.optimizer)
         scheduler = get_scheduler(optimizer=optimizer, **self.config.optim.scheduler)
         return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
 
