@@ -73,7 +73,7 @@ class FrozenBNBLinear(nn.Module):
         output = DequantizeAndLinear.apply(input, *weight_args)
 
         if self.adapter:
-            output += self.adapter(input)
+            output = output + self.adapter(input)
         return output
 
     @classmethod
@@ -97,7 +97,7 @@ class FrozenBNBEmbedding(nn.Module):
             weight_deq = dequantize_blockwise(self.weight, (self.absmax, self.code))
             output = F.embedding(input, weight_deq, **kwargs)
         if self.adapter:
-            output += self.adapter(input)
+            output = output + self.adapter(input)
         return output
 
     @classmethod
