@@ -18,6 +18,7 @@ from transformers import (
 )
 
 from data import TextFileDataset
+from modeling import add_lowrank_adapters, convert_model_to_int8
 
 
 class MyLightningModule(LightningModule):
@@ -25,6 +26,10 @@ class MyLightningModule(LightningModule):
         super().__init__()
         self.config = config
         self.model = AutoModelForCausalLM.from_pretrained(**config.model)
+
+        convert_model_to_int8(self.model)
+        add_lowrank_adapters(self.model, adapter_dim=16)
+
         if config.train.gradient_checkpointing:
             self.model.gradient_checkpointing_enable()
 
