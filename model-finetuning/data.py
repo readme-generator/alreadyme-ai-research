@@ -23,4 +23,5 @@ class TextFileDataset(Dataset):
                 max_length=self.max_length,
                 padding="max_length",
                 truncation=True,
+                return_tensors="pt",
             )
