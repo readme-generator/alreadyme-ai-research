@@ -1,3 +1,4 @@
+accelerate
 omegaconf
 bitsandbytes
 pytorch_lightning
