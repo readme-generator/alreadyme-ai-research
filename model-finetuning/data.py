@@ -23,9 +23,9 @@ class TextFileDataset(Dataset):
                 padding="max_length",
                 max_length=self.max_length,
                 truncation=True,
-                return_tensors="pt",
             )
-        encodings["labels"] = encodings["input_ids"].masked_fill(
-            encodings["input_ids"] == self.tokenizer.pad_token_id, -100
-        )
+        encodings["labels"] = [
+            token_id if token_id != self.tokenizer.pad_token_id else -100
+            for token_id in encodings["input_ids"]
+        ]
         return encodings
