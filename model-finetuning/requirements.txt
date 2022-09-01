@@ -1,4 +1,5 @@
 omegaconf
+bitsandbytes
 pytorch_lightning
 torch
 transformers
