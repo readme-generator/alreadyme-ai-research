@@ -4,6 +4,7 @@ data:
 
 model:
   pretrained_model_name_or_path: bigscience/bloom-3b
+  load_in_8bit: true
 
 optim:
   optimizer:
@@ -17,7 +18,7 @@ optim:
     num_training_steps: 1000000
 
 train:
-  batch_size: 8
+  batch_size: 1
   accumulate_grad_batches: 1
   gradient_clip_val: 0.0
   gradient_checkpointing: true
