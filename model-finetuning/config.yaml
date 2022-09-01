@@ -4,6 +4,7 @@ data:
 
 model:
   pretrained_model_name_or_path: bigscience/bloom-3b
+  device_map: auto
   load_in_8bit: true
 
 optim:
