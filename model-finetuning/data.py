@@ -18,9 +18,11 @@ class TextFileDataset(Dataset):
 
     def __getitem__(self, index: int) -> dict[str, Any]:
         with open(self.filenames[index]) as fp:
-            return self.tokenizer(
+            encodings = self.tokenizer(
                 fp.read(),
                 max_length=self.max_length,
                 padding="max_length",
                 truncation=True,
             )
+            encodings["labels"] = encodings["input_ids"][1:] + [-100]
+            return encodings
