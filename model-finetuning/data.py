@@ -25,7 +25,7 @@ class TextFileDataset(Dataset):
                 truncation=True,
                 return_tensors="pt",
             )
-        encodings["labels"] = encodings["input_ids"].fill_mask(
+        encodings["labels"] = encodings["input_ids"].masked_fill(
             encodings["input_ids"] == self.tokenizer.pad_token_id, -100
         )
         return encodings
