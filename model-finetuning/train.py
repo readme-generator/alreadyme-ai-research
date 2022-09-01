@@ -29,7 +29,9 @@ def main(
         accumulate_grad_batches=config.train.accumulate_grad_batches,
         callbacks=[ModelCheckpoint(save_last=True)],
         logger=WandbLogger(
-            project="alreadyme-model-finetuning", name=config.train.name, id=resume_id
+            project="alreadyme-model-finetuning",
+            name=config.model.pretrained_model_name_or_path,
+            id=resume_id,
         ),
     ).fit(
         MyLightningModule(config), MyLightningDataModule(config), ckpt_path=resume_from
