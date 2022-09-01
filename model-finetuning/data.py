@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
+import torch
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizerBase
 
@@ -16,9 +16,16 @@ class TextFileDataset(Dataset):
     def __len__(self) -> int:
         return len(self.filenames)
 
-    def __getitem__(self, index: int) -> dict[str, Any]:
+    def __getitem__(self, index: int) -> dict[str, torch.Tensor]:
         with open(self.filenames[index]) as fp:
-            text = fp.read()
-        encodings = self.tokenizer(text, max_length=self.max_length, truncation=True)
-        encodings["labels"] = encodings["input_ids"]
+            encodings = self.tokenizer(
+                fp.read(),
+                padding="max_length",
+                max_length=self.max_length,
+                truncation=True,
+                return_tensors="pt",
+            )
+        encodings["labels"] = encodings["input_ids"].fill_mask(
+            encodings["input_ids"] == self.tokenizer.pad_token_id, -100
+        )
         return encodings
