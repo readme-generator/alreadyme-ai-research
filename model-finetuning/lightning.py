@@ -9,7 +9,12 @@ from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, LightningModule
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
-from transformers import AutoModelForCausalLM, AutoTokenizer, get_scheduler
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    DefaultDataCollator,
+    get_scheduler,
+)
 
 from data import TextFileDataset
 
@@ -66,5 +71,6 @@ class MyLightningDataModule(LightningDataModule):
             self.config.train.batch_size,
             shuffle=True,
             num_workers=os.cpu_count(),
+            collate_fn=DefaultDataCollator(),
             persistent_workers=True,
         )
