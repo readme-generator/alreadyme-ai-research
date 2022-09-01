@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 import torch
 import torch.nn.functional as F
@@ -68,9 +68,9 @@ class FrozenBNBLinear(nn.Module):
         self.register_buffer("absmax", absmax.requires_grad_(False))
         self.register_buffer("code", code.requires_grad_(False))
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, input: torch.Tensor):
         weight_args = (self.weight, self.absmax, self.code, self.bias)
-        output = DequantizeAndLinear.apply(x, *weight_args)
+        output = DequantizeAndLinear.apply(input, *weight_args)
 
         if self.adapter:
             output += self.adapter(input)
@@ -92,7 +92,7 @@ class FrozenBNBEmbedding(nn.Module):
         self.register_buffer("absmax", absmax.requires_grad_(False))
         self.register_buffer("code", code.requires_grad_(False))
 
-    def forward(self, input, **kwargs):
+    def forward(self, input: torch.Tensor, **kwargs: Any):
         with torch.no_grad():
             weight_deq = dequantize_blockwise(self.weight, (self.absmax, self.code))
             output = F.embedding(input, weight_deq, **kwargs)
