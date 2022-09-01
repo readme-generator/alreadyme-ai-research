@@ -24,5 +24,5 @@ class TextFileDataset(Dataset):
                 padding="max_length",
                 truncation=True,
             )
-            encodings["labels"] = encodings["input_ids"][1:] + [-100]
+            encodings["labels"] = encodings["input_ids"]
             return encodings
