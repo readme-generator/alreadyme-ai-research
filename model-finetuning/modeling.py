@@ -40,17 +40,14 @@ class LoRAAttentionQVLinear(nn.Linear):
         return result + torch.cat((lora_q, torch.zeros_like(lora_q), lora_v), dim=2)
 
     @staticmethod
-    def from_linear(
-        self, linear: nn.Linear, lora_dim: int = 4, lora_scale: float = 8
-    ) -> LoRAAttentionQVLinear:
+    def from_linear(linear: nn.Linear, **kwargs: Any) -> LoRAAttentionQVLinear:
         lora_linear = LoRAAttentionQVLinear(
             in_features=linear.in_features,
             out_features=linear.out_features,
             bias=linear.bias is not None,
             device=linear.weight.device,
             dtype=linear.weight.dtype,
-            lora_dim=lora_dim,
-            lora_scale=lora_scale,
+            **kwargs,
         )
         lora_linear.weight, lora_linear.bias = linear.weight, linear.bias
         return lora_linear
@@ -72,10 +69,10 @@ class LoRAAttentionQVLinear(nn.Linear):
 
 
 def replace_self_attention_linear_with_lora(model: nn.Module, **kwargs: Any):
-    for module in model.modules():
-        for name, child in module.named_children():
+    for m in model.modules():
+        for name, child in m.named_children():
             if name == "query_key_value":
-                setattr(module, name, LoRAAttentionQVLinear.from_linear(child))
+                setattr(m, name, LoRAAttentionQVLinear.from_linear(child, **kwargs))
 
 
 def disable_all_parameters_except_lora(model: nn.Module):
