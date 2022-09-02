@@ -78,4 +78,4 @@ def replace_self_attention_linear_with_lora(model: nn.Module, **kwargs: Any):
 
 def disable_all_parameters_except_lora(model: nn.Module):
     for name, parameter in model.named_parameters():
-        parameter.requires_grad = "lora_" in parameter
+        parameter.requires_grad = "lora_" in name
