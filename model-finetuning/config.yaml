@@ -3,7 +3,7 @@ data:
   max_length: 2048
 
 model:
-  pretrained_model_name_or_path: bigscience/bloom-3b
+  pretrained_model_name_or_path: bigscience/bloom-1b7
 
 optim:
   optimizer:
