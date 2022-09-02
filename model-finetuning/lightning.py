@@ -36,7 +36,7 @@ class MyLightningModule(LightningModule):
         self.model = AutoModelForCausalLM.from_pretrained(**config.model)
 
         replace_self_attention_linear_with_lora(self.model, lora_dim=4, lora_scale=8)
-        disable_all_parameters_except_lora(self.model)
+        disable_all_parameters_except_lora(self.model, ["word_embeddings_layernorm"])
 
         if config.train.gradient_checkpointing:
             self.model.gradient_checkpointing_enable()

@@ -76,6 +76,7 @@ def replace_self_attention_linear_with_lora(model: nn.Module, **kwargs: Any):
                 setattr(m, name, LoRAAttentionQVLinear.from_linear(child, **kwargs))
 
 
-def disable_all_parameters_except_lora(model: nn.Module):
+def disable_all_parameters_except_lora(model: nn.Module, whitelist: list[str] = []):
+    whitelist = whitelist + ["lora_"]
     for name, parameter in model.named_parameters():
-        parameter.requires_grad = "lora_" in name
+        parameter.requires_grad = any(keyword in name for keyword in whitelist)
