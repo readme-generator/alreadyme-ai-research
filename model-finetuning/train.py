@@ -3,8 +3,6 @@ import os
 import warnings
 from typing import Optional
 
-import deepspeed
-import torch
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
@@ -14,8 +12,6 @@ from lightning import MyLightningDataModule, MyLightningModule
 
 warnings.filterwarnings("ignore")
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
-torch.utils.checkpoint.checkpoint = deepspeed.checkpointing.checkpoint
 
 
 def main(
