@@ -48,8 +48,9 @@ class MyLightningModule(LightningModule):
         return loss
 
     def parameter_groups(self) -> list[dict[str, Any]]:
-        do_decay = [p for p in self.model.parameters() if p.ndim >= 2]
-        no_decay = [p for p in self.model.parameters() if p.ndim < 2]
+        parameters = [p for p in self.model.parameters() if p.requires_grad]
+        do_decay = [p for p in parameters if p.ndim >= 2]
+        no_decay = [p for p in parameters if p.ndim < 2]
         return [{"params": do_decay}, {"params": no_decay, "weight_decay": 0.0}]
 
     def configure_optimizers(self) -> tuple[list[Optimizer], list[dict[str, Any]]]:
