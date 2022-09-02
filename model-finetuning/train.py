@@ -3,15 +3,18 @@ import os
 import warnings
 from typing import Optional
 
+import torch
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
 
 from lightning import MyLightningDataModule, MyLightningModule
+from utils import CheckpointFunction
 
 warnings.filterwarnings("ignore")
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+torch.utils.checkpoint.CheckpointFunction = CheckpointFunction
 
 
 def main(
