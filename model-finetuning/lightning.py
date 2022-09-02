@@ -5,7 +5,6 @@ import os
 from typing import Any, Optional
 
 import torch
-from bitsandbytes.optim import AdamW8bit
 from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, LightningModule
 from torch.optim import Optimizer
@@ -18,7 +17,16 @@ from transformers import (
 )
 
 from data import TextFileDataset
-from modeling import add_lowrank_adapters, convert_model_to_int8
+from modeling import (
+    disable_all_parameters_except_lora,
+    replace_self_attention_linear_with_lora,
+)
+
+# from bitsandbytes.optim import AdamW8bit
+try:
+    from apex.optimizers import FusedAdam as AdamW
+except ModuleNotFoundError:
+    from torch.optim import AdamW
 
 
 class MyLightningModule(LightningModule):
@@ -27,8 +35,8 @@ class MyLightningModule(LightningModule):
         self.config = config
         self.model = AutoModelForCausalLM.from_pretrained(**config.model)
 
-        convert_model_to_int8(self.model)
-        add_lowrank_adapters(self.model, adapter_dim=16)
+        replace_self_attention_linear_with_lora(self.model, lora_dim=4, lora_scale=8)
+        disable_all_parameters_except_lora(self.model)
 
         if config.train.gradient_checkpointing:
             self.model.gradient_checkpointing_enable()
@@ -45,7 +53,7 @@ class MyLightningModule(LightningModule):
         return [{"params": do_decay}, {"params": no_decay, "weight_decay": 0.0}]
 
     def configure_optimizers(self) -> tuple[list[Optimizer], list[dict[str, Any]]]:
-        optimizer = AdamW8bit(self.parameter_groups(), **self.config.optim.optimizer)
+        optimizer = AdamW(self.parameter_groups(), **self.config.optim.optimizer)
         scheduler = get_scheduler(optimizer=optimizer, **self.config.optim.scheduler)
         return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
 

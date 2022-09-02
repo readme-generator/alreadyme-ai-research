@@ -1,131 +1,83 @@
 from __future__ import annotations
 
+import math
 from typing import Any, Optional
 
 import torch
-import torch.nn.functional as F
-from bitsandbytes.functional import dequantize_blockwise, quantize_blockwise
-from torch import nn
+import torch.nn as nn
 
 
-def quantize_blockise_lowmemory(
-    matrix: torch.Tensor, chunk_size: int = 2**20
-) -> tuple[torch.Tensor, tuple[torch.Tensor, torch.Tensor]]:
-    code, chunks, absmaxes = None, [], []
-    flat_tensor = matrix.flatten()
-
-    for i in range((matrix.numel() - 1) // chunk_size + 1):
-        input_chunk = flat_tensor[i * chunk_size : (i + 1) * chunk_size].clone()
-        quantized_chunk, (absmax_chunk, code) = quantize_blockwise(input_chunk, code)
-        chunks.append(quantized_chunk)
-        absmaxes.append(absmax_chunk)
-
-    matrix_i8 = torch.cat(chunks).reshape_as(matrix)
-    return matrix_i8, (torch.cat(absmaxes), code)
-
-
-class DequantizeAndLinear(torch.autograd.Function):
-    @staticmethod
-    @torch.cuda.amp.custom_fwd
-    def forward(
-        ctx,
-        input: torch.Tensor,
-        weights_quantized: torch.ByteTensor,
-        absmax: torch.FloatTensor,
-        code: torch.FloatTensor,
-        bias: torch.FloatTensor,
-    ) -> torch.Tensor:
-        weights_deq = dequantize_blockwise(weights_quantized, (absmax, code))
-        ctx.save_for_backward(input, weights_quantized, absmax, code)
-        ctx._has_bias = bias is not None
-        return F.linear(input, weights_deq, bias)
-
-    @staticmethod
-    @torch.cuda.amp.custom_bwd
-    def backward(ctx, grad_output: torch.Tensor):
-        input, weights_quantized, absmax, code = ctx.saved_tensors
-        weights_deq = dequantize_blockwise(weights_quantized, (absmax, code))
-
-        grad_input = grad_output @ weights_deq
-        grad_bias = grad_output.flatten(0, -2).sum(dim=0) if ctx._has_bias else None
-        return grad_input, None, None, None, grad_bias
-
-
-class FrozenBNBLinear(nn.Module):
+class LoRAAttentionQVLinear(nn.Linear):
     def __init__(
         self,
-        weight: torch.Tensor,
-        absmax: torch.Tensor,
-        code: torch.Tensor,
-        bias: Optional[torch.Tensor] = None,
+        in_features: int,
+        out_features: int,
+        bias: bool = True,
+        device: Optional[torch.device] = None,
+        dtype: Optional[torch.dtype] = None,
+        lora_dim: int = 4,
+        lora_scale: float = 8,
     ):
-        super().__init__()
-        self.out_features, self.in_features = weight.shape
-        self.bias = bias
-        self.adapter = None
+        super().__init__(in_features, out_features, bias, device, dtype)
+        self.lora_scale = lora_scale
+        self.lora_q_A = nn.Parameter(self.weight.new_empty(in_features, lora_dim))
+        self.lora_v_A = nn.Parameter(self.weight.new_empty(in_features, lora_dim))
+        self.lora_q_B = nn.Parameter(self.weight.new_empty(lora_dim, out_features // 3))
+        self.lora_v_B = nn.Parameter(self.weight.new_empty(lora_dim, out_features // 3))
+        self.reset_parameters()
 
-        self.register_buffer("weight", weight.requires_grad_(False))
-        self.register_buffer("absmax", absmax.requires_grad_(False))
-        self.register_buffer("code", code.requires_grad_(False))
+    def reset_parameters(self):
+        super().reset_parameters()
+        nn.init.kaiming_uniform_(self.lora_q_A, a=math.sqrt(5))
+        nn.init.kaiming_uniform_(self.lora_v_A, a=math.sqrt(5))
+        nn.init.zeros_(self.lora_q_B)
+        nn.init.zeros_(self.lora_v_B)
 
-    def forward(self, input: torch.Tensor):
-        weight_args = (self.weight, self.absmax, self.code, self.bias)
-        output = DequantizeAndLinear.apply(input, *weight_args)
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        result = super().forward(x)
+        lora_q = x @ self.lora_q_A @ self.lora_q_B * self.lora_scale
+        lora_v = x @ self.lora_v_A @ self.lora_v_B * self.lora_scale
+        return result + torch.cat((lora_q, torch.zeros_like(lora_q), lora_v), dim=2)
 
-        if self.adapter:
-            output = output + self.adapter(input)
-        return output
+    @staticmethod
+    def from_linear(
+        self, linear: nn.Linear, lora_dim: int = 4, lora_scale: float = 8
+    ) -> LoRAAttentionQVLinear:
+        lora_linear = LoRAAttentionQVLinear(
+            in_features=linear.in_features,
+            out_features=linear.out_features,
+            bias=linear.bias is not None,
+            device=linear.weight.device,
+            dtype=linear.weight.dtype,
+            lora_dim=lora_dim,
+            lora_scale=lora_scale,
+        )
+        lora_linear.weight, lora_linear.bias = linear.weight, linear.bias
+        return lora_linear
 
-    @classmethod
-    def from_linear(cls, linear: nn.Linear) -> FrozenBNBLinear:
-        weights_int8, state = quantize_blockise_lowmemory(linear.weight)
-        return cls(weights_int8, *state, linear.bias)
+    def to_linear(self) -> nn.Linear:
+        delta_q = (self.lora_q_A @ self.lora_q_B * self.lora_scale).T
+        delta_v = (self.lora_v_A @ self.lora_v_B * self.lora_scale).T
+        delta = torch.cat((delta_q, torch.zeros_like(delta_q), delta_v), dim=0)
 
-
-class FrozenBNBEmbedding(nn.Module):
-    def __init__(self, weight: torch.Tensor, absmax: torch.Tensor, code: torch.Tensor):
-        super().__init__()
-        self.num_embeddings, self.embedding_dim = weight.shape
-        self.adapter = None
-
-        self.register_buffer("weight", weight.requires_grad_(False))
-        self.register_buffer("absmax", absmax.requires_grad_(False))
-        self.register_buffer("code", code.requires_grad_(False))
-
-    def forward(self, input: torch.Tensor, **kwargs: Any):
-        with torch.no_grad():
-            weight_deq = dequantize_blockwise(self.weight, (self.absmax, self.code))
-            output = F.embedding(input, weight_deq, **kwargs)
-        if self.adapter:
-            output = output + self.adapter(input)
-        return output
-
-    @classmethod
-    def from_embedding(cls, embedding: nn.Embedding) -> FrozenBNBEmbedding:
-        weights_int8, state = quantize_blockise_lowmemory(embedding.weight)
-        return cls(weights_int8, *state)
-
-
-def convert_model_to_int8(model: nn.Module):
-    for module in list(model.modules()):
-        for name, child in module.named_children():
-            if isinstance(child, nn.Linear):
-                setattr(module, name, FrozenBNBLinear.from_linear(child))
-            elif isinstance(child, nn.Embedding):
-                setattr(module, name, FrozenBNBEmbedding.from_embedding(child))
+        linear = nn.Linear(
+            in_features=self.in_features,
+            out_features=self.out_features,
+            bias=self.bias is not None,
+            device=self.weight.device,
+            dtype=self.weight.dtype,
+        )
+        linear.weight, linear.bias = self.weight + delta, self.bias
+        return linear
 
 
-def add_lowrank_adapters(model: nn.Module, adapter_dim: int = 16):
+def replace_self_attention_linear_with_lora(model: nn.Module, **kwargs: Any):
     for module in model.modules():
-        if isinstance(module, FrozenBNBLinear):
-            module.adapter = nn.Sequential(
-                nn.Linear(module.in_features, adapter_dim, bias=False),
-                nn.Linear(adapter_dim, module.out_features, bias=False),
-            )
-            nn.init.zeros_(module.adapter[1].weight)
-        elif isinstance(module, FrozenBNBEmbedding):
-            module.adapter = nn.Sequential(
-                nn.Embedding(module.num_embeddings, adapter_dim),
-                nn.Linear(adapter_dim, module.embedding_dim, bias=False),
-            )
-            nn.init.zeros_(module.adapter[1].weight)
+        for name, child in module.named_children():
+            if name == "query_key_value":
+                setattr(module, name, LoRAAttentionQVLinear.from_linear(child))
+
+
+def disable_all_parameters_except_lora(model: nn.Module):
+    for name, parameter in model.named_parameters():
+        parameter.requires_grad = "lora_" in parameter

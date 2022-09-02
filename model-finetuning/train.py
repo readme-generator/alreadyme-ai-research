@@ -21,6 +21,8 @@ def main(
 ):
     Trainer(
         gpus=1,
+        precision=16,
+        amp_backend="apex",
         log_every_n_steps=config.train.log_every_n_steps,
         max_steps=config.optim.scheduler.num_training_steps,
         gradient_clip_val=config.train.gradient_clip_val,
