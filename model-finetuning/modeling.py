@@ -28,10 +28,11 @@ class LoRAAttentionQVLinear(nn.Linear):
 
     def reset_parameters(self):
         super().reset_parameters()
-        nn.init.kaiming_uniform_(self.lora_q_A, a=math.sqrt(5))
-        nn.init.kaiming_uniform_(self.lora_v_A, a=math.sqrt(5))
-        nn.init.zeros_(self.lora_q_B)
-        nn.init.zeros_(self.lora_v_B)
+        if hasattr(self, "lora_q_A"):
+            nn.init.kaiming_uniform_(self.lora_q_A, a=math.sqrt(5))
+            nn.init.kaiming_uniform_(self.lora_v_A, a=math.sqrt(5))
+            nn.init.zeros_(self.lora_q_B)
+            nn.init.zeros_(self.lora_v_B)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         result = super().forward(x)
