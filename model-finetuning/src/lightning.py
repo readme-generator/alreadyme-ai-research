@@ -4,7 +4,13 @@ import glob
 import os
 from typing import Any, Optional
 
+import numpy as np
 import torch
+from data import TextFileDataset
+from modeling import (
+    disable_all_parameters_except_lora,
+    replace_self_attention_linear_with_lora,
+)
 from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, LightningModule
 from torch.optim import Optimizer
@@ -14,12 +20,6 @@ from transformers import (
     AutoTokenizer,
     DefaultDataCollator,
     get_scheduler,
-)
-
-from data import TextFileDataset
-from modeling import (
-    disable_all_parameters_except_lora,
-    replace_self_attention_linear_with_lora,
 )
 
 try:
@@ -68,8 +68,11 @@ class MyLightningDataModule(LightningDataModule):
         self.config = config
 
     def setup(self, stage: Optional[str] = None):
+        filenames = glob.glob(self.config.data.filenames)
+        np.random.RandomState(42).shuffle(filenames)
+
         self.dataset = TextFileDataset(
-            filenames=glob.glob(self.config.data.filenames),
+            filenames=filenames,
             tokenizer=AutoTokenizer.from_pretrained(
                 **self.config.model, truncation_side="left"
             ),
@@ -80,7 +83,6 @@ class MyLightningDataModule(LightningDataModule):
         return DataLoader(
             self.dataset,
             self.config.train.batch_size,
-            shuffle=True,
             num_workers=os.cpu_count(),
             collate_fn=DefaultDataCollator(),
             persistent_workers=True,
