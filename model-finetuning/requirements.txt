@@ -1,5 +1,4 @@
 omegaconf
-deepspeed
 pytorch_lightning
 torch
 transformers
