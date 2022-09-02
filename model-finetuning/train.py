@@ -3,15 +3,20 @@ import os
 import warnings
 from typing import Optional
 
+import deepspeed
+import torch
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
+from pytorch_lightning.strategies import DeepSpeedStrategy
 
 from lightning import MyLightningDataModule, MyLightningModule
 
 warnings.filterwarnings("ignore")
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+torch.utils.checkpoint.checkpoint = deepspeed.checkpointing.checkpoint
 
 
 def main(
@@ -20,9 +25,15 @@ def main(
     resume_id: Optional[str] = None,
 ):
     Trainer(
-        gpus=1,
+        accelerator="gpu",
+        devices="auto",
+        strategy=DeepSpeedStrategy(
+            stage=3,
+            offload_optimizer=True,
+            offload_parameters=True,
+            cpu_checkpointing=True,
+        ),
         precision=16,
-        amp_backend="apex",
         log_every_n_steps=config.train.log_every_n_steps,
         max_steps=config.optim.scheduler.num_training_steps,
         gradient_clip_val=config.train.gradient_clip_val,
