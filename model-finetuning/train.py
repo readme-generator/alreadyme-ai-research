@@ -19,7 +19,17 @@ def main(
     resume_from: Optional[str] = None,
     resume_id: Optional[str] = None,
 ):
-    Trainer(
+    checkpoint = ModelCheckpoint(
+        save_last=True,
+        every_n_train_steps=config.train.save_every_n_train_steps,
+    )
+    logger = WandbLogger(
+        project="alreadyme-model-finetuning",
+        name=config.model.pretrained_model_name_or_path,
+        id=resume_id,
+    )
+
+    trainer = Trainer(
         accelerator="gpu",
         devices="auto",
         precision=16,
@@ -28,13 +38,10 @@ def main(
         max_steps=config.optim.scheduler.num_training_steps,
         gradient_clip_val=config.train.gradient_clip_val,
         accumulate_grad_batches=config.train.accumulate_grad_batches,
-        callbacks=[ModelCheckpoint(save_last=True)],
-        logger=WandbLogger(
-            project="alreadyme-model-finetuning",
-            name=config.model.pretrained_model_name_or_path,
-            id=resume_id,
-        ),
-    ).fit(
+        callbacks=[checkpoint],
+        logger=logger,
+    )
+    trainer.fit(
         MyLightningModule(config), MyLightningDataModule(config), ckpt_path=resume_from
     )
 
