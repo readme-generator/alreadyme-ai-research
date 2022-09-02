@@ -9,7 +9,6 @@ from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
-from pytorch_lightning.strategies import DeepSpeedStrategy
 
 from lightning import MyLightningDataModule, MyLightningModule
 
@@ -27,12 +26,7 @@ def main(
     Trainer(
         accelerator="gpu",
         devices="auto",
-        strategy=DeepSpeedStrategy(
-            stage=3,
-            offload_optimizer=True,
-            offload_parameters=True,
-            cpu_checkpointing=True,
-        ),
+        strategy="deepspeed_stage_2_offload",
         precision=16,
         log_every_n_steps=config.train.log_every_n_steps,
         max_steps=config.optim.scheduler.num_training_steps,
