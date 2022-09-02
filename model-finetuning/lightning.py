@@ -5,7 +5,6 @@ import os
 from typing import Any, Optional
 
 import torch
-from deepspeed.ops.adam import DeepSpeedCPUAdam as Adam
 from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, LightningModule
 from torch.optim import Optimizer
@@ -22,6 +21,11 @@ from modeling import (
     disable_all_parameters_except_lora,
     replace_self_attention_linear_with_lora,
 )
+
+try:
+    from apex.optimizers import FusedAdam as AdamW
+except ModuleNotFoundError:
+    from torch.optim import AdamW
 
 
 class MyLightningModule(LightningModule):
@@ -43,13 +47,12 @@ class MyLightningModule(LightningModule):
         return loss
 
     def parameter_groups(self) -> list[dict[str, Any]]:
-        parameters = [p for p in self.model.parameters() if p.requires_grad]
-        do_decay = [p for p in parameters if p.ndim >= 2]
-        no_decay = [p for p in parameters if p.ndim < 2]
+        do_decay = [p for p in self.model.parameters() if p.ndim >= 2]
+        no_decay = [p for p in self.model.parameters() if p.ndim < 2]
         return [{"params": do_decay}, {"params": no_decay, "weight_decay": 0.0}]
 
     def configure_optimizers(self) -> tuple[list[Optimizer], list[dict[str, Any]]]:
-        optimizer = Adam(self.parameter_groups(), **self.config.optim.optimizer)
+        optimizer = AdamW(self.parameter_groups(), **self.config.optim.optimizer)
         scheduler = get_scheduler(optimizer=optimizer, **self.config.optim.scheduler)
         return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
 
@@ -66,7 +69,9 @@ class MyLightningDataModule(LightningDataModule):
     def setup(self, stage: Optional[str] = None):
         self.dataset = TextFileDataset(
             filenames=glob.glob(self.config.data.filenames),
-            tokenizer=AutoTokenizer.from_pretrained(**self.config.model),
+            tokenizer=AutoTokenizer.from_pretrained(
+                **self.config.model, truncation_side="left"
+            ),
             max_length=self.config.data.max_length,
         )
 
