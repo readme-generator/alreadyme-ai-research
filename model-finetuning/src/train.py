@@ -3,12 +3,11 @@ import os
 import warnings
 from typing import Optional
 
+from lightning import MyLightningDataModule, MyLightningModule
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
-
-from lightning import MyLightningDataModule, MyLightningModule
 
 warnings.filterwarnings("ignore")
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -49,8 +48,8 @@ def main(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("config")
-    parser.add_argument("--resume_from")
-    parser.add_argument("--resume_id")
+    parser.add_argument("--resume-from")
+    parser.add_argument("--resume-id")
     args, unknown_args = parser.parse_known_args()
 
     config = OmegaConf.load(args.config)
