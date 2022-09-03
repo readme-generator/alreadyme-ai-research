@@ -13,7 +13,7 @@ from torch.utils.data import DataLoader
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    DataCollatorForLanguageModeling,
+    DefaultDataCollator,
     get_scheduler,
 )
 
@@ -81,21 +81,19 @@ class MyLightningDataModule(LightningDataModule):
         filenames = glob.glob(self.config.data.filenames)
         np.random.RandomState(self.config.data.random_state).shuffle(filenames)
 
-        tokenizer = AutoTokenizer.from_pretrained(
-            **self.config.model.transformer, truncation_side="left"
-        )
         self.dataset = TextFileDataset(
             filenames=filenames,
-            tokenizer=tokenizer,
+            tokenizer=AutoTokenizer.from_pretrained(
+                **self.config.model.transformer, truncation_side="left"
+            ),
             max_length=self.config.data.max_length,
         )
-        self.collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
 
     def train_dataloader(self) -> DataLoader:
         return DataLoader(
             self.dataset,
             self.config.train.batch_size,
             num_workers=os.cpu_count(),
-            collate_fn=self.collator,
+            collate_fn=DefaultDataCollator(),
             persistent_workers=True,
         )
