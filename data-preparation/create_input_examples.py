@@ -7,6 +7,7 @@ import multiprocessing as mp
 import os
 import random
 import shutil
+from typing import Optional
 
 import tqdm
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
@@ -21,13 +22,21 @@ def create_example_from_repository(
     max_total_tokens: int,
     max_readme_tokens: int,
     max_source_code_tokens: int,
-) -> str:
+    min_source_code_files: int,
+) -> Optional[str]:
     files, readme_content = files.copy(), ""
     for filename in list(files):
         if filename.lower() == "readme.md":
             readme_content = f"{delimiter}\n{filename}:\n{files.pop(filename)}"
-        elif os.path.basename(filename).startswith(".") or "test" in filename.lower():
+        elif (
+            os.path.basename(filename).startswith(".")
+            or "test" in filename.lower()
+            or filename.endswith(".md")
+        ):
             files.pop(filename)
+
+    if len(files) < min_source_code_files:
+        return None
 
     # We will only use the first `max_readme_tokens` by truncating the tokenized and
     # encoded sequences. Note that we have to preserve the original raw text format, so
@@ -84,9 +93,12 @@ def worker_fn(filenames: list[str], args: argparse.Namespace, return_queue: mp.Q
                 args.max_total_tokens,
                 args.max_readme_tokens,
                 args.max_source_code_tokens,
+                args.min_source_code_files,
             )
-            output = "".join(random.choices("0123456789ABCDEF", k=16)) + ".txt"
+            if example_string is None:
+                break
 
+            output = "".join(random.choices("0123456789ABCDEF", k=16)) + ".txt"
             with open(os.path.join(args.output_dir, output), "w") as fp:
                 fp.write(example_string)
         return_queue.put(True)
@@ -121,11 +133,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input-dir", default="repositories")
     parser.add_argument("--output-dir", default="examples")
-    parser.add_argument("--tokenizer", default="bigscience/bloom-2b5")
-    parser.add_argument("--num-sampling", type=int, default=10)
+    parser.add_argument("--tokenizer", default="bigscience/bloom-1b7")
+    parser.add_argument("--num-sampling", type=int, default=4)
     parser.add_argument("--max-total-tokens", type=int, default=2048)
     parser.add_argument("--max-readme-tokens", type=int, default=1024)
     parser.add_argument("--max-source-code-tokens", type=int, default=256)
+    parser.add_argument("--min-source-code-files", type=int, default=7)
     parser.add_argument("--delimiter", default="================================")
     parser.add_argument("--num-cores", type=int, default=mp.cpu_count())
     main(parser.parse_args())
