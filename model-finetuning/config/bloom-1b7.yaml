@@ -7,8 +7,8 @@ model:
   transformer:
     pretrained_model_name_or_path: bigscience/bloom-1b7
   lora:
-    lora_dim: 8
-    lora_scale: 1.0
+    lora_dim: 4
+    lora_scale: 8
     attention_layer_name: query_key_value
 
 optim:
