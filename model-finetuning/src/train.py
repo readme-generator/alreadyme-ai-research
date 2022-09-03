@@ -3,11 +3,12 @@ import os
 import warnings
 from typing import Optional
 
-from lightning import MyLightningDataModule, MyLightningModule
 from omegaconf import DictConfig, OmegaConf
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import ModelCheckpoint
 from pytorch_lightning.loggers import WandbLogger
+
+from lightning import MyLightningDataModule, MyLightningModule
 
 warnings.filterwarnings("ignore")
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -23,7 +24,7 @@ def main(
     )
     logger = WandbLogger(
         project="alreadyme-model-finetuning",
-        name=config.model.pretrained_model_name_or_path,
+        name=config.model.transformer.pretrained_model_name_or_path,
         id=resume_id,
     )
 
