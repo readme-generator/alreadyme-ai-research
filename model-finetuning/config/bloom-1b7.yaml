@@ -19,8 +19,8 @@ optim:
     weight_decay: 0.01
   scheduler:
     name: linear
-    num_warmup_steps: 100
-    num_training_steps: 10000
+    num_warmup_steps: 2500
+    num_training_steps: 250000
 
 train:
   batch_size: 4
@@ -28,4 +28,4 @@ train:
   gradient_clip_val: 0.0
   gradient_checkpointing: true
   log_every_n_steps: 10
-  save_every_n_train_steps: 100
+  save_every_n_train_steps: 2500
