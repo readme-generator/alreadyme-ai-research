@@ -6,11 +6,6 @@ from typing import Any, Optional
 
 import numpy as np
 import torch
-from data import TextFileDataset
-from modeling import (
-    disable_all_parameters_except_lora,
-    replace_self_attention_linear_with_lora,
-)
 from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, LightningModule
 from torch.optim import Optimizer
@@ -22,6 +17,9 @@ from transformers import (
     get_scheduler,
 )
 
+from data import TextFileDataset
+from modeling import replace_self_attention_linear_with_lora
+
 try:
     from apex.optimizers import FusedAdam as AdamW
 except ModuleNotFoundError:
@@ -32,17 +30,28 @@ class MyLightningModule(LightningModule):
     def __init__(self, config: DictConfig):
         super().__init__()
         self.config = config
-        self.model = AutoModelForCausalLM.from_pretrained(**config.model)
+        self.model = AutoModelForCausalLM.from_pretrained(**config.model.transformer)
 
-        replace_self_attention_linear_with_lora(self.model, lora_dim=4, lora_scale=8)
-        disable_all_parameters_except_lora(self.model, ["word_embeddings_layernorm"])
+        # Add LoRA layers and freeze other parameters. Note that we will enable the
+        # layernorm for word embeddings because with gradient checkpointing, there is a
+        # bug that the gradients are not correctly tracked without preceding gradient
+        # requirements.
+        self.lora_layers = replace_self_attention_linear_with_lora(
+            self.model, **config.model.lora
+        )
+        for name, param in self.model.named_parameters():
+            param.requires_grad = "lora_" in name or "word_embeddings_layernorm" in name
 
         if config.train.gradient_checkpointing:
             self.model.gradient_checkpointing_enable()
 
     def training_step(self, batch: dict[str, torch.Tensor], idx: int) -> torch.Tensor:
         loss = self.model(**batch, use_cache=False).loss
+        weight_delta_norm = [layer.weight_delta_norm() for layer in self.lora_layers]
+        weight_delta_norm = sum(weight_delta_norm) / len(weight_delta_norm)
+
         self.log("train/loss", loss)
+        self.log("train/weight_delta_norm", weight_delta_norm)
         self.log("step", self.global_step)
         return loss
 
@@ -68,13 +77,14 @@ class MyLightningDataModule(LightningDataModule):
         self.config = config
 
     def setup(self, stage: Optional[str] = None):
+        # Get the textfile list and shuffle with fixed random seed to preserve orders.
         filenames = glob.glob(self.config.data.filenames)
-        np.random.RandomState(42).shuffle(filenames)
+        np.random.RandomState(self.config.data.random_state).shuffle(filenames)
 
         self.dataset = TextFileDataset(
             filenames=filenames,
             tokenizer=AutoTokenizer.from_pretrained(
-                **self.config.model, truncation_side="left"
+                **self.config.model.transformer, truncation_side="left"
             ),
             max_length=self.config.data.max_length,
         )

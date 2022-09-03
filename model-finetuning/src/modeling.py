@@ -40,6 +40,12 @@ class LoRAAttentionQVLinear(nn.Linear):
         lora_v = x @ self.lora_v_A @ self.lora_v_B * self.lora_scale
         return result + torch.cat((lora_q, torch.zeros_like(lora_q), lora_v), dim=2)
 
+    @torch.no_grad()
+    def weight_delta_norm(self) -> torch.Tensor:
+        delta_q = self.lora_q_A @ self.lora_q_B * self.lora_scale
+        delta_v = self.lora_v_A @ self.lora_v_B * self.lora_scale
+        return (delta_q.square().mean().sqrt() + delta_v.square().mean().sqrt()) / 2
+
     @staticmethod
     def from_linear(linear: nn.Linear, **kwargs: Any) -> LoRAAttentionQVLinear:
         lora_linear = LoRAAttentionQVLinear(
@@ -54,6 +60,9 @@ class LoRAAttentionQVLinear(nn.Linear):
         return lora_linear
 
     def to_linear(self) -> nn.Linear:
+        # Create delta of the weight by multiplying two low-rank matrices. Note that the
+        # key weight is not affected by this layer, so only query and value weights will
+        # be modified by this delta matrix.
         delta_q = (self.lora_q_A @ self.lora_q_B * self.lora_scale).T
         delta_v = (self.lora_v_A @ self.lora_v_B * self.lora_scale).T
         delta = torch.cat((delta_q, torch.zeros_like(delta_q), delta_v), dim=0)
@@ -69,14 +78,23 @@ class LoRAAttentionQVLinear(nn.Linear):
         return linear
 
 
-def replace_self_attention_linear_with_lora(model: nn.Module, **kwargs: Any):
-    for m in model.modules():
-        for name, child in m.named_children():
-            if name == "query_key_value":
-                setattr(m, name, LoRAAttentionQVLinear.from_linear(child, **kwargs))
+def replace_self_attention_linear_with_lora(
+    model: nn.Module,
+    attention_layer_name: str = "query_key_value",
+    **kwargs: Any,
+) -> list[LoRAAttentionQVLinear]:
+    lora_layers = []
+    for module in model.modules():
+        for name, child in module.named_children():
+            if name == attention_layer_name:
+                lora_layer = LoRAAttentionQVLinear.from_linear(child, **kwargs)
+                lora_layers.append(lora_layer)
+                setattr(module, name, lora_layer)
+    return lora_layers
 
 
-def disable_all_parameters_except_lora(model: nn.Module, whitelist: list[str] = []):
-    whitelist = whitelist + ["lora_"]
-    for name, parameter in model.named_parameters():
-        parameter.requires_grad = any(keyword in name for keyword in whitelist)
+def merge_lora_to_single_linear(model: nn.Module):
+    for module in model.modules():
+        for name, child in module.named_children():
+            if isinstance(child, LoRAAttentionQVLinear):
+                setattr(module, name, child.to_linear())
