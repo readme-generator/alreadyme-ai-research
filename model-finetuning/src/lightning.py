@@ -83,9 +83,7 @@ class MyLightningDataModule(LightningDataModule):
 
         self.dataset = TextFileDataset(
             filenames=filenames,
-            tokenizer=AutoTokenizer.from_pretrained(
-                **self.config.model.transformer, truncation_side="left"
-            ),
+            tokenizer=AutoTokenizer.from_pretrained(**self.config.model.transformer),
             max_length=self.config.data.max_length,
         )
 
