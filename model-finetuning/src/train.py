@@ -19,8 +19,7 @@ def main(
     resume_id: Optional[str] = None,
 ):
     checkpoint = ModelCheckpoint(
-        save_last=True,
-        every_n_train_steps=config.train.save_every_n_train_steps,
+        save_last=True, every_n_train_steps=config.train.save_every_n_train_steps
     )
     logger = WandbLogger(
         project="alreadyme-model-finetuning",
@@ -41,7 +40,9 @@ def main(
         logger=logger,
     )
     trainer.fit(
-        MyLightningModule(config), MyLightningDataModule(config), ckpt_path=resume_from
+        MyLightningModule(config),
+        MyLightningDataModule(config),
+        ckpt_path=resume_from,
     )
 
 
