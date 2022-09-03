@@ -7,8 +7,8 @@ model:
   transformer:
     pretrained_model_name_or_path: bigscience/bloom-1b7
   lora:
-    lora_dim: 4
-    lora_scale: 8
+    lora_dim: 8
+    lora_scale: 4
     attention_layer_name: query_key_value
 
 optim:
@@ -16,7 +16,7 @@ optim:
     lr: 1e-4
     betas: [0.9, 0.999]
     eps: 1e-6
-    weight_decay: 0.01
+    weight_decay: 0.1
   scheduler:
     name: linear
     num_warmup_steps: 2500
@@ -25,7 +25,7 @@ optim:
 train:
   batch_size: 4
   accumulate_grad_batches: 1
-  gradient_clip_val: 0.0
+  gradient_clip_val: 1.0
   gradient_checkpointing: true
   log_every_n_steps: 10
   save_every_n_train_steps: 2500
