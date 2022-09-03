@@ -24,6 +24,9 @@ class TextFileDataset(Dataset):
                 max_length=self.max_length,
                 truncation=True,
             )
+
+        # Create label sequence which equals to the input tokens except paddings. We
+        # will replace the padding tokens to `-100` to prevent from calculating loss.
         encodings["labels"] = [
             token_id if token_id != self.tokenizer.pad_token_id else -100
             for token_id in encodings["input_ids"]
