@@ -93,7 +93,7 @@ def replace_self_attention_linear_with_lora(
     return lora_layers
 
 
-def merge_lora_to_single_linear(model: nn.Module):
+def merge_attention_lora_to_single_linear(model: nn.Module):
     for module in model.modules():
         for name, child in module.named_children():
             if isinstance(child, LoRAAttentionQVLinear):
