@@ -16,6 +16,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 
 def create_example_from_repository(
+    repository: str,
     files: dict[str, str],
     tokenizer: PreTrainedTokenizerBase,
     delimiter: str,
@@ -27,10 +28,13 @@ def create_example_from_repository(
     files, readme_content = files.copy(), ""
     for filename in list(files):
         if filename.lower() == "readme.md":
-            readme_content = f"{delimiter}\n{filename}:\n{files.pop(filename)}"
+            readme_content = f"{delimiter}\n> README.md of {repository}:\n\n"
+            readme_content += files.pop(filename)
         elif (
             os.path.basename(filename).startswith(".")
             or "test" in filename.lower()
+            or "example" in filename.lower()
+            or "sample" in filename.lower()
             or filename.endswith(".md")
         ):
             files.pop(filename)
@@ -50,26 +54,43 @@ def create_example_from_repository(
     num_tokens = len(readme_content_encoding.input_ids)
     example_string = readme_content[: readme_content_encoding.offset_mapping[-1][1]]
 
-    while files and num_tokens + 2 < max_total_tokens:
+    newline_length = len(tokenizer.tokenize("\n\n"))
+    while len(files) > 0:
         # Sample the files from the repository and truncate the tokenized and encoded
         # source code sequences. Similar to the case of `README.md` content, we use
         # `return_offsets_mapping` to truncate the original raw text.
         filename = random.choice(list(files))
-        max_length = min(max_source_code_tokens - 2, max_total_tokens - num_tokens - 2)
+        prefix = f"{delimiter}\n> Middle section of {filename}:\n\n"
+        prefix_length = len(tokenizer.tokenize(prefix))
 
-        content = f"{delimiter}\n{filename}:\n{files.pop(filename)}"
-        content_encoding = tokenizer(
-            content,
-            max_length=max_length,
-            truncation=True,
-            return_offsets_mapping=True,
+        max_length = min(max_source_code_tokens, max_total_tokens - num_tokens)
+        max_length = max_length - prefix_length - newline_length
+        if max_length <= max_source_code_tokens // 3:
+            break
+
+        source = files.pop(filename)
+        source_encoding = tokenizer(
+            source, add_special_tokens=False, return_offsets_mapping=True
         )
-        content = content[: content_encoding.offset_mapping[-1][1]] + "\n\n"
+
+        # Truncate center of the source code if the source code is too long. Because
+        # many source codes have comments (or license) and library imports, we have to
+        # remove them and get the center-part of the codes to create the prompt with
+        # meaningful contents.
+        start_index, end_index = 0, -1
+        if len(source_encoding.input_ids) > max_length:
+            start_index = (len(source_encoding.input_ids) - max_length) // 2
+            end_index = start_index + max_length
+
+        start_offset = source_encoding.offset_mapping[start_index][0]
+        end_offset = source_encoding.offset_mapping[end_index][1]
+        content = prefix + source[start_offset:end_offset] + "\n\n"
 
         # The truncated prompt text (which consists of delimiter, filename and its
         # source code content) will be added before the current example string. It will
         # make the `README.md` content to be end of the prompt examples.
-        num_tokens += len(content_encoding.input_ids) + 2
+        num_tokens += prefix_length + newline_length
+        num_tokens += len(source_encoding.input_ids[start_index:end_index])
         example_string = content + example_string
 
     return example_string
@@ -80,13 +101,15 @@ def worker_fn(filenames: list[str], args: argparse.Namespace, return_queue: mp.Q
 
     for filename in filenames:
         with open(filename) as fp:
-            files = {}
+            files, repository = {}, None
             for line in fp:
                 file = json.loads(line)
                 files[file["path"]] = file["content"]
+                repository = file["repository"]
 
         for _ in range(args.num_sampling):
             example_string = create_example_from_repository(
+                repository,
                 files,
                 tokenizer,
                 args.delimiter,
@@ -138,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument("--max-total-tokens", type=int, default=2048)
     parser.add_argument("--max-readme-tokens", type=int, default=1024)
     parser.add_argument("--max-source-code-tokens", type=int, default=256)
-    parser.add_argument("--min-source-code-files", type=int, default=7)
-    parser.add_argument("--delimiter", default="================================")
+    parser.add_argument("--min-source-code-files", type=int, default=5)
+    parser.add_argument("--delimiter", default="$$$$$$")
     parser.add_argument("--num-cores", type=int, default=mp.cpu_count())
     main(parser.parse_args())
