@@ -1,5 +1,0 @@
-omegaconf
-pytorch_lightning
-torch
-transformers
-wandb
