@@ -20,7 +20,7 @@ optim:
   scheduler:
     name: linear
     num_warmup_steps: 2500
-    num_training_steps: 250000
+    num_training_steps: 500000
 
 train:
   batch_size: 4
