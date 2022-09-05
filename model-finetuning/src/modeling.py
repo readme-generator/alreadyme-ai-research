@@ -74,7 +74,8 @@ class LoRAAttentionQVLinear(nn.Linear):
             device=self.weight.device,
             dtype=self.weight.dtype,
         )
-        linear.weight, linear.bias = self.weight + delta, self.bias
+        linear.weight.copy_(self.weight + delta)
+        linear.bias = self.bias
         return linear
 
 
