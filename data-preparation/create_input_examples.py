@@ -84,7 +84,11 @@ def create_example_from_repository(
 
         content = f"\n\n{separator}\n$ head -n $$N$$ {filename}\n{files.pop(filename)}"
         content_encoding = tokenizer(
-            content, max_length=max_length, truncation=True, return_offsets_mapping=True
+            content,
+            max_length=max_length,
+            truncation=True,
+            return_offsets_mapping=True,
+            add_special_tokens=False,
         )
         content = content[: content_encoding.offset_mapping[-1][1]].lstrip()
 
