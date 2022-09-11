@@ -8,7 +8,6 @@ import os
 import random
 import re
 import shutil
-from typing import Optional
 
 import tqdm
 from transformers import AutoTokenizer, PreTrainedTokenizerBase
@@ -34,7 +33,7 @@ def create_example_from_repository(
     max_urls_in_readme: int,
     include_no_title: bool,
     include_longer_readme: bool,
-) -> Optional[str]:
+) -> str | None:
     files, readme_content = files.copy(), ""
     for filename in list(files):
         if filename.lower() == "readme.md":
@@ -85,13 +84,12 @@ def create_example_from_repository(
 
         content = f"\n\n{separator}\n$ head -n $$N$$ {filename}\n{files.pop(filename)}"
         content_encoding = tokenizer(
-            content,
-            max_length=max_length,
-            truncation=True,
-            return_offsets_mapping=True,
+            content, max_length=max_length, truncation=True, return_offsets_mapping=True
         )
         content = content[: content_encoding.offset_mapping[-1][1]].lstrip()
 
+        # If there is no line of source code, then stop generating example prompt
+        # because there is no space to insert new example.
         if content.count("\n") - 1 == 0:
             break
         content = content.replace("$$N$$", str(content.count("\n") - 1)) + "\n\n"
