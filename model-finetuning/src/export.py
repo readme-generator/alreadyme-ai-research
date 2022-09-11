@@ -4,6 +4,7 @@ import argparse
 
 import torch
 from omegaconf import OmegaConf
+from tokenizers.processors import TemplateProcessing
 from transformers import AutoTokenizer
 
 from lightning import MyLightningModule
@@ -18,9 +19,17 @@ def main(args: argparse.Namespace):
 
     model = MyLightningModule.load_from_checkpoint(args.checkpoint, config=config)
     merge_attention_lora_to_single_linear(model)
-
     model.model.half().save_pretrained(output)
-    AutoTokenizer.from_pretrained(**config.model.transformer).save_pretrained(output)
+
+    tokenizer = AutoTokenizer.from_pretrained(**config.model.transformer)
+    tokenizer._tokenizer.post_processor = TemplateProcessing(
+        single="<s> $A </s>",
+        special_tokens=[
+            ("<s>", tokenizer.bos_token_id),
+            ("</s>", tokenizer.eos_token_id),
+        ],
+    )
+    tokenizer.save_pretrained(output)
 
 
 if __name__ == "__main__":

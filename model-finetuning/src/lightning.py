@@ -8,6 +8,7 @@ import numpy as np
 import torch
 from omegaconf import DictConfig
 from pytorch_lightning import LightningDataModule, LightningModule
+from tokenizers.processors import TemplateProcessing
 from torch.optim import Optimizer
 from torch.utils.data import DataLoader
 from transformers import (
@@ -81,9 +82,17 @@ class MyLightningDataModule(LightningDataModule):
         filenames = glob.glob(self.config.data.filenames)
         np.random.RandomState(self.config.data.random_state).shuffle(filenames)
 
+        tokenizer = AutoTokenizer.from_pretrained(**self.config.model.transformer)
+        tokenizer._tokenizer.post_processor = TemplateProcessing(
+            single="<s> $A </s>",
+            special_tokens=[
+                ("<s>", tokenizer.bos_token_id),
+                ("</s>", tokenizer.eos_token_id),
+            ],
+        )
         self.dataset = TextFileDataset(
             filenames=filenames,
-            tokenizer=AutoTokenizer.from_pretrained(**self.config.model.transformer),
+            tokenizer=tokenizer,
             max_length=self.config.data.max_length,
         )
 
