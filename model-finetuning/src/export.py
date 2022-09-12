@@ -23,11 +23,8 @@ def main(args: argparse.Namespace):
 
     tokenizer = AutoTokenizer.from_pretrained(**config.model.transformer)
     tokenizer._tokenizer.post_processor = TemplateProcessing(
-        single="<s> $A </s>",
-        special_tokens=[
-            ("<s>", tokenizer.bos_token_id),
-            ("</s>", tokenizer.eos_token_id),
-        ],
+        single="<s> $A",
+        special_tokens=[("<s>", tokenizer.bos_token_id)],
     )
     tokenizer.save_pretrained(output)
 
