@@ -1,5 +1,5 @@
+<h1 align="center">ALREADYME.md AI Research</h1>
 <p align="center">
-	# ALREADYME.md AI Research
 	<a href="https://github.com/readme-generator/alreadyme-ai-research/issues">
 		<img alt="GitHub issues" src="https://img.shields.io/github/issues/readme-generator/alreadyme-ai-research">
 	</a>
