@@ -13,7 +13,7 @@
 		<img src="https://www.codefactor.io/repository/github/readme-generator/alreadyme-ai-research/badge" alt="CodeFactor" />
 	</a>
     <br/><br/>
-    <b>Generate README.md from few-shot learning with GPT-3</b>
+    <b>Generate README.md with GPT-3 few-shot learning</b>
 </p>
 
 --------
