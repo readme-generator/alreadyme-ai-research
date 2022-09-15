@@ -1,11 +1,17 @@
-<h1 style="text-align: center">ALREADYME.md AI Research</h1>
 <p align="center">
-    <a href="https://github.com/bigscience-workshop/petals/actions">
-        <img src="https://github.com/bigscience-workshop/petals/actions/workflows/run-tests.yaml/badge.svg?branch=main">
+	<h1>ALREADYME.md AI Research</h1>
+	<a href="https://github.com/readme-generator/alreadyme-ai-research/issues">
+		<img alt="GitHub issues" src="https://img.shields.io/github/issues/readme-generator/alreadyme-ai-research">
+	</a>
+    <a href="https://github.com/readme-generator/alreadyme-ai-research/blob/master/LICENSE">
+        <img alt="GitHub" src="https://img.shields.io/github/license/readme-generator/alreadyme-ai-research">
     </a>
     <a href="https://github.com/psf/black">
         <img src="https://img.shields.io/badge/code%20style-black-000000.svg">
     </a>
+	<a href="https://www.codefactor.io/repository/github/readme-generator/alreadyme-ai-research">
+		<img src="https://www.codefactor.io/repository/github/readme-generator/alreadyme-ai-research/badge" alt="CodeFactor" />
+	</a>
     <br/><br/>
     <b>Generate README.md from few-shot learning with GPT-3</b>
 </p>
