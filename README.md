@@ -26,6 +26,7 @@ This repository contains several subprojects. You can see the detailed descripti
 
 * **[data-preparation](./data-preparation)**: The source codes for preparing a train dataset.
 * **[model-finetuning](./model-finetuning)**: How to fine-tune large-scale language models efficiently.
+* **[sentence-generation](./sentence-generation)**: Efficient and scalable way to generate sentences for model serving.
 
 ## How it works?
 As the large-scale models like [GPT-3](https://github.com/openai/gpt-3) have shown, few-shot learning is the most important key for building the generalized language model. They can understand what they should have to write according to the previous prompt and few-shot examples. Using this features, they can do almost anything without fine-tuning. They can summarize the news, answer the questions, and even make a conversation!
