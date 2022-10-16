@@ -207,4 +207,5 @@ examples
 examples-legacy
 *.ipynb
 bloom-1b7*
-sentence-generation
+compiled-bloom-1b7-finetuned-readme-270k-steps
+legacy
