@@ -1,0 +1,11 @@
+apex
+loguru
+numpy
+omegaconf
+pandas
+pytorch_lightning
+tokenizers
+torch
+tqdm
+transformers
+wandb
