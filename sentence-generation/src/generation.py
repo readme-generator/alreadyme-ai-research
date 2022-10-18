@@ -339,22 +339,22 @@ if __name__ == "__main__":
     from transformers import AutoConfig, AutoTokenizer
 
     config = AutoConfig.from_pretrained(
-        "sentence-generation/compiled-bloom-1b7-finetuned-readme-270k-steps"
+        "sentence-generation/compiled-bloom-1b7-finetuned-readme-500k-steps"
     )
     tokenizer = AutoTokenizer.from_pretrained(
-        "sentence-generation/compiled-bloom-1b7-finetuned-readme-270k-steps"
+        "sentence-generation/compiled-bloom-1b7-finetuned-readme-500k-steps"
     )
     options = GenerationOptions(
         hidden_size=config.hidden_size,
         num_hidden_layers=config.n_layer,
         num_attention_heads=config.n_head,
         max_stream=4,
-        temperature=0.95,
+        temperature=0.87,
         pad_to_multiple_of=8,
         max_length=2048,
     )
     session = GenerationSession(
-        "sentence-generation/compiled-bloom-1b7-finetuned-readme-270k-steps/model.pt",
+        "sentence-generation/compiled-bloom-1b7-finetuned-readme-500k-steps/model.pt",
         tokenizer,
         options,
     )
