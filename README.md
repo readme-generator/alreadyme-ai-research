@@ -6,6 +6,9 @@
     <a href="https://github.com/readme-generator/alreadyme-ai-research/blob/master/LICENSE">
         <img alt="GitHub" src="https://img.shields.io/github/license/readme-generator/alreadyme-ai-research">
     </a>
+	<a href="https://app.fossa.com/projects/git%2Bgithub.com%2Freadme-generator%2Falreadyme-ai-research?ref=badge_shield">
+		<img src="https://app.fossa.com/api/projects/git%2Bgithub.com%2Freadme-generator%2Falreadyme-ai-research.svg?type=shield" alt="CodeFactor" />
+	</a>
     <a href="https://github.com/psf/black">
         <img src="https://img.shields.io/badge/code%20style-black-000000.svg">
     </a>
@@ -68,6 +71,9 @@ For more details, check out our **[model-finetuning](./model-finetuning)** subpr
 
 ## License
 **alreadyme-ai-research** is released under the Apache License 2.0. License can be found in [here](./LICENSE).
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Freadme-generator%2Falreadyme-ai-research.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Freadme-generator%2Falreadyme-ai-research?ref=badge_large)
 
 ## Citations
 ```bibtex
